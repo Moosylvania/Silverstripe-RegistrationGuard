@@ -9,6 +9,7 @@ use Moosylvania\RegistrationGuard\Service\RegistrationGuard;
 use Moosylvania\RegistrationGuard\Task\EmailCanonicalBackfillTask;
 use Moosylvania\RegistrationGuard\Task\SpamScoreTask;
 use Moosylvania\RegistrationGuard\Tests\Stub\GuardedTestForm;
+use Moosylvania\RegistrationGuard\Tests\Stub\TestController;
 use Moosylvania\RegistrationGuard\Tests\Stub\TestEntry;
 use SilverStripe\Control\Controller;
 use SilverStripe\Core\Config\Config;
@@ -104,7 +105,7 @@ class RegistrationGuardExtensionTest extends SapphireTest
         ]);
 
         return GuardedTestForm::create(
-            Controller::curr(),
+            TestController::create(),
             'GuardedTestForm',
             FieldList::create(TextField::create('Email')),
             FieldList::create(FormAction::create('doTest'))
