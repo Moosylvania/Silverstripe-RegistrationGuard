@@ -33,6 +33,7 @@ class RegistrationGuardCheckTest extends SapphireTest
                     'surname' => 'Surname',
                     'zip' => 'Zip',
                     'dob' => 'Dob',
+                    'address' => 'Address',
                 ],
                 'min_age' => 21,
                 'zip_regex' => '/^\d{5}(-\d{4})?$/',
@@ -47,6 +48,7 @@ class RegistrationGuardCheckTest extends SapphireTest
             'FirstName' => 'Joe',
             'Surname' => 'Madden',
             'Zip' => '55401',
+            'Address' => '123 Main St',
             'Dob' => '1980-05-02',
             'Rts' => $this->agedToken(30),
             'RgWebsite' => '',
@@ -132,7 +134,8 @@ class RegistrationGuardCheckTest extends SapphireTest
         $cases = [
             'blocked-substring-in-name:.ru' => ['Surname' => 'best.ru'],
             'blocked-email-suffix:.ru' => ['Email' => 'someone@mail.ru'],
-            'too-many-spaces-in-name' => ['FirstName' => 'a b c d'],
+            'too-many-spaces:first_name' => ['FirstName' => 'a b c d'],
+            'too-many-spaces:surname' => ['Surname' => 'a b c d'],
             'invalid-zip' => ['Zip' => 'NW1 4RY'],
         ];
 
@@ -143,6 +146,66 @@ class RegistrationGuardCheckTest extends SapphireTest
 
         $cyrillic = RegistrationGuard::create()->check($this->validData(['Surname' => 'Иванов']), 'test');
         $this->assertTrue($cyrillic->isBlocked());
+    }
+
+    /**
+     * Real names contain spaces. The limits exist to catch "a b c d", not to punish a double-barrelled
+     * name or a Dutch tussenvoegsel.
+     */
+    public function testSpaceLimitsSpareRealNames()
+    {
+        $names = [
+            ['FirstName' => 'Mary Jane'],
+            ['Surname' => 'van der Berg'],
+            ['Surname' => "O'Brien"],
+        ];
+
+        foreach ($names as $override) {
+            $result = RegistrationGuard::create()->check($this->validData($override), 'test');
+            $this->assertFalse($result->isBlocked(), json_encode($override) . ' must not block');
+        }
+    }
+
+    public function testSpaceLimitsAreConfigurable()
+    {
+        Config::modify()->merge(RegistrationGuard::class, 'sources', [
+            'test' => ['max_name_spaces' => ['first_name' => 0]],
+        ]);
+
+        $result = RegistrationGuard::create()->check($this->validData(['FirstName' => 'Mary Jane']), 'test');
+
+        $this->assertContains('too-many-spaces:first_name', $result->getReasons());
+    }
+
+    public function testBlockedAddressPatterns()
+    {
+        Config::modify()->merge(RegistrationGuard::class, 'sources', [
+            'test' => ['blocked_address_patterns' => ['/^123 Main St$/i', '/\bP\.?O\.? Box\b/i']],
+        ]);
+
+        $exact = RegistrationGuard::create()->check($this->validData(), 'test');
+        $this->assertContains('blocked-address-pattern:/^123 Main St$/i', $exact->getReasons());
+
+        $partial = RegistrationGuard::create()->check($this->validData(['Address' => 'Unit 4, PO Box 900']), 'test');
+        $this->assertTrue($partial->isBlocked());
+
+        $fine = RegistrationGuard::create()->check($this->validData(['Address' => '4 Elm Avenue']), 'test');
+        $this->assertFalse($fine->isBlocked(), implode(', ', $fine->getReasons()));
+    }
+
+    /**
+     * An unmapped or empty address must never match, or every submission without one would block on a
+     * pattern like /^$/.
+     */
+    public function testBlockedAddressPatternsIgnoreAnEmptyAddress()
+    {
+        Config::modify()->merge(RegistrationGuard::class, 'sources', [
+            'test' => ['blocked_address_patterns' => ['/^$/', '/Main/']],
+        ]);
+
+        $result = RegistrationGuard::create()->check($this->validData(['Address' => '']), 'test');
+
+        $this->assertFalse($result->isBlocked(), implode(', ', $result->getReasons()));
     }
 
     public function testBlockedSubmissionsAreLogged()
@@ -156,6 +219,7 @@ class RegistrationGuardCheckTest extends SapphireTest
         $this->assertNotNull($log, 'A blocked submission must leave a log row');
         $this->assertEquals('test', $log->Source);
         $this->assertEquals('joe.madden@example.com', $log->Email);
+        $this->assertEquals('123 Main St', $log->Address, 'The address must be logged so patterns can be tuned');
         $this->assertStringContainsString('honeypot', $log->Reasons);
     }
 

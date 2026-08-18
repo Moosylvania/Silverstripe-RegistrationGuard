@@ -31,6 +31,7 @@ Moosylvania\RegistrationGuard\Service\RegistrationGuard:
     surname: 'Surname'
     zip: null
     dob: null
+    address: null
   unique_fields: []
   honeypot_field: 'RgWebsite'
   timestamp_field: 'Rts'
@@ -48,6 +49,10 @@ Moosylvania\RegistrationGuard\Service\RegistrationGuard:
   blocked_name_patterns:
     - '/[А-Яа-яЁё]/u'
     - '/\p{Han}/u'
+  blocked_address_patterns: []
+  max_name_spaces:
+    first_name: 1
+    surname: 2
   min_age: 0
   zip_regex: null
 

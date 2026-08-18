@@ -24,12 +24,13 @@ Access** in the security admin.
 | `Reasons` | One reason code per line, in the order the checks ran |
 | `Email` | As submitted |
 | `EmailCanonical` | The inbox it actually reaches, aliases collapsed |
-| `Nickname`, `FirstName`, `Surname`, `Zip` | As submitted |
+| `Nickname`, `FirstName`, `Surname`, `Zip`, `Address` | As submitted |
 | `Dob` | Stored as a string, not a date — the raw value may not parse at all |
 | `IP`, `UserAgent` | Only when the guard was given an `HTTPRequest` |
 | `SecondsOnForm` | Dwell time, or `-1` when the timestamp was missing or forged |
 
-`EmailCanonical`, `IP` and `Source` are indexed.
+`EmailCanonical`, `IP` and `Source` are indexed. `Email`, `Nickname`, `Address`, `IP`, `Source` and
+`Reasons` are searchable in the admin.
 
 ## Reason codes
 
@@ -43,7 +44,8 @@ Access** in the security admin.
 | `blocked-email-suffix:.ru` | The address ended with a `blocked_email_suffixes` entry |
 | `blocked-domain:qq.com` | The address was at a `blocked_email_domains` domain |
 | `blocked-pattern:/[А-Яа-яЁё]/u` | A name or the email matched a `blocked_name_patterns` regex |
-| `too-many-spaces-in-name` | More than one space in a first name, or two in a surname |
+| `blocked-address-pattern:/^123 Main St$/i` | The address matched a `blocked_address_patterns` regex |
+| `too-many-spaces:surname` | That field had more spaces than `max_name_spaces` allows |
 | `invalid-zip` | The zip failed `zip_regex` |
 | `duplicate-canonical-email` | The inbox is already registered under a different-looking address |
 | `suspicious-dob:1970-01-01` | A date of birth from `suspicious_dobs` — worth 60 points |
@@ -70,6 +72,11 @@ against records created in the same window — that is what [`SpamScoreTask`](ta
 
 **Before lowering `block_threshold`**, check whether an extra hard block would do the job instead. A
 specific `blocked_email_domains` entry costs nothing; a lower threshold applies to everybody.
+
+**Repeated addresses.** Sort or search by `Address` to find one a bot is reusing, then add a pattern
+for it to that source's `blocked_address_patterns`. This is why the address is logged. Nothing counts
+repeats automatically — see
+[blocking an address](registration-guard.md#blocking-an-address).
 
 ## Logging never breaks a submission
 

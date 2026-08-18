@@ -95,6 +95,7 @@ class RegistrationGuard
         'surname' => 'Surname',
         'zip' => null,
         'dob' => null,
+        'address' => null,
     ];
 
     /**
@@ -115,6 +116,25 @@ class RegistrationGuard
      * script names so a project can add its own without the module owning a mapping table.
      */
     private static $blocked_name_patterns = ['/[А-Яа-яЁё]/u', '/\p{Han}/u'];
+
+    /**
+     * Preg patterns that must not match the submitted address. Kept apart from the name patterns
+     * because a street address legitimately contains digits, punctuation and abbreviations that would
+     * look like spam anywhere else.
+     *
+     * Empty by default. The intended workflow is to spot an address a bot is reusing in the log and
+     * add a pattern for it here.
+     */
+    private static $blocked_address_patterns = [];
+
+    /**
+     * Most spaces a name field may contain, keyed by field_map name. A field absent from the map is
+     * unlimited. "Mary Jane" is fine as a first name; "a b c d" is not a person.
+     */
+    private static $max_name_spaces = [
+        'first_name' => 1,
+        'surname' => 2,
+    ];
 
     /**
      * Minimum age in years. 0 disables the age gate.
@@ -389,6 +409,7 @@ class RegistrationGuard
         $surname = $this->value($data, 'surname');
         $zip = $this->value($data, 'zip');
         $dob = $this->value($data, 'dob');
+        $address = $this->value($data, 'address');
 
         // ---------------------------------------------------------------- field errors
 
@@ -454,7 +475,16 @@ class RegistrationGuard
 
         // ---------------------------------------------------------------- hard content blocks
 
-        foreach ($this->hardBlockReasons($email, $nickname, $firstName, $surname, $zip) as $reason) {
+        $hardBlockValues = [
+            'email' => $email,
+            'nickname' => $nickname,
+            'first_name' => $firstName,
+            'surname' => $surname,
+            'zip' => $zip,
+            'address' => $address,
+        ];
+
+        foreach ($this->hardBlockReasons($hardBlockValues) as $reason) {
             $result->block($reason);
         }
 
@@ -553,10 +583,14 @@ class RegistrationGuard
      *
      * @return array reason strings
      */
-    protected function hardBlockReasons($email, $nickname, $firstName, $surname, $zip)
+    protected function hardBlockReasons(array $values)
     {
+        $email = $values['email'];
+        $zip = $values['zip'];
+        $address = $values['address'];
+
         $reasons = [];
-        $names = array_filter([$nickname, $firstName, $surname], 'strlen');
+        $names = array_filter([$values['nickname'], $values['first_name'], $values['surname']], 'strlen');
         $all = array_filter(array_merge($names, [$email]), 'strlen');
 
         foreach ((array) $this->opt('blocked_name_substrings') as $needle) {
@@ -589,8 +623,19 @@ class RegistrationGuard
             }
         }
 
-        if (substr_count($firstName, ' ') > 1 || substr_count($surname, ' ') > 2) {
-            $reasons[] = 'too-many-spaces-in-name';
+        foreach ((array) $this->opt('blocked_address_patterns') as $pattern) {
+            if ($address !== '' && preg_match($pattern, $address)) {
+                $reasons[] = 'blocked-address-pattern:' . $pattern;
+            }
+        }
+
+        foreach ((array) $this->opt('max_name_spaces') as $logical => $max) {
+            if ($max === null || !isset($values[$logical]) || $values[$logical] === '') {
+                continue;
+            }
+            if (substr_count($values[$logical], ' ') > (int) $max) {
+                $reasons[] = 'too-many-spaces:' . $logical;
+            }
         }
 
         $zipRegex = $this->opt('zip_regex');
@@ -918,6 +963,7 @@ class RegistrationGuard
             $log->Surname = $this->value($data, 'surname');
             $log->Dob = $this->value($data, 'dob');
             $log->Zip = $this->value($data, 'zip');
+            $log->Address = $this->value($data, 'address');
             $log->Score = $result->getScore();
             $log->Reasons = implode("\n", $result->getReasons());
             $log->Source = (string) $this->source;

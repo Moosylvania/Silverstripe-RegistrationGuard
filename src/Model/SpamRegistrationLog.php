@@ -30,6 +30,7 @@ class SpamRegistrationLog extends DataObject
         // Varchar rather than Date: this is the raw submitted value and may not parse at all.
         'Dob' => 'Varchar(50)',
         'Zip' => 'Varchar(20)',
+        'Address' => 'Varchar(255)',
         'IP' => 'Varchar(45)',
         'UserAgent' => 'Text',
         'Score' => 'Int',
@@ -53,6 +54,7 @@ class SpamRegistrationLog extends DataObject
         'FirstName' => 'First',
         'Surname' => 'Last',
         'Dob' => 'Dob',
+        'Address' => 'Address',
         'IP' => 'IP',
         'Reasons' => 'Reasons',
     ];
@@ -60,6 +62,7 @@ class SpamRegistrationLog extends DataObject
     private static $searchable_fields = [
         'Email',
         'Nickname',
+        'Address',
         'IP',
         'Source',
         'Reasons',
