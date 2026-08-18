@@ -200,12 +200,56 @@ Unconditional, and all configurable:
 | `blocked_email_suffixes` | the address ends with the suffix (default: `.ru`) |
 | `blocked_email_domains` | the address is at one of these domains (default: none) |
 | `blocked_name_patterns` | any name or the email matches the regex (default: Cyrillic, Han) |
+| `blocked_address_patterns` | the address matches the regex (default: none) |
+| `max_name_spaces` | a name has more spaces than allowed (default: 1 in `first_name`, 2 in `surname`) |
 | `zip_regex` | the zip does not match (default: `null`, disabled) |
-| — | `FirstName` has more than one space, or `Surname` more than two |
 
 `blocked_name_patterns` takes plain regexes rather than script names, so you can add your own without
 the module owning a mapping table. Both defaults are aggressive — if you have real users writing their
 names in Cyrillic or Han, override the list.
+
+#### Blocking an address
+
+`blocked_address_patterns` is the address equivalent, kept as its own option rather than folded into
+`blocked_name_patterns` because a street address legitimately contains digits, punctuation and
+abbreviations that would look like spam in a surname.
+
+It takes any number of regexes, and the address is blocked if it matches **any** of them:
+
+```yaml
+Moosylvania\RegistrationGuard\Service\RegistrationGuard:
+  sources:
+    sweeps:
+      field_map: {email: Email, first_name: FirstName, surname: Surname, address: Address}
+      blocked_address_patterns:
+        - '/^123 Nowhere Ln$/i'          # one address a bot keeps reusing
+        - '/\bP\.?O\.? Box\b/i'        # no PO boxes for a physical prize
+        - '/^\d+ Test\b/i'
+```
+
+The check needs `address` in the source's `field_map`; without it there is nothing to read and the
+check is skipped. An empty address never matches, so a pattern like `/^$/` cannot accidentally block
+every submission that leaves the field blank.
+
+The intended workflow is reactive rather than predictive: when the [log](log-and-admin.md) shows the
+same address arriving over and over, add a pattern for it. The module does not count repeat addresses
+for you — if you want an address to be usable exactly once, put it in `unique_fields` instead, which
+produces a field error rather than a silent block.
+
+Addresses are never fed to the [scoring heuristics](#scoring). Street addresses are full of digits and
+abbreviations, and scoring them would reject real people.
+
+#### Spaces in names
+
+`max_name_spaces` maps a `field_map` name to the most spaces it may contain. The defaults catch `a b c
+d` while leaving `Mary Jane` and `van der Berg` alone. A field not listed is unlimited:
+
+```yaml
+max_name_spaces:
+  first_name: 1
+  surname: 2
+  nickname: 0      # no spaces at all in a handle
+```
 
 ### 7. Duplicate canonical email — *block*
 
@@ -312,6 +356,8 @@ Every option can be set globally or overridden per source.
 | `blocked_email_suffixes` | `['.ru']` | Hard block by address ending. |
 | `blocked_name_substrings` | `http://`, `https://`, `.ru` | Hard block by substring in any name. |
 | `blocked_name_patterns` | Cyrillic, Han | Hard block by regex over names and email. |
+| `blocked_address_patterns` | `[]` | Hard block by regex over the address. Any match blocks. |
+| `max_name_spaces` | `{first_name: 1, surname: 2}` | Most spaces each name field may contain. Unlisted fields are unlimited. |
 | `min_age` | `0` | Minimum age in years. `0` disables. |
 | `zip_regex` | `null` | Pattern the zip must match. `null` disables. |
 | `rate_limit_hits` | `1` | Allowed submissions per window. |
@@ -319,8 +365,8 @@ Every option can be set globally or overridden per source.
 | `sources` | `{}` | Per-source overrides. Not itself overridable. |
 | `guarded_forms` | `{}` | Auto-wiring map. Not itself overridable. |
 
-`field_map` keys are `email`, `nickname`, `first_name`, `surname`, `zip` and `dob`. The default maps
-`email`, `first_name` and `surname` only; the rest are `null`.
+`field_map` keys are `email`, `nickname`, `first_name`, `surname`, `zip`, `dob` and `address`. The
+default maps `email`, `first_name` and `surname` only; the rest are `null`.
 
 ## Upgrading from Silverstripe 5
 
