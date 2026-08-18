@@ -1,0 +1,10 @@
+.vscode
+public/
+vendor
+.DS_Store
+ehthumbs.db
+Thumbs.db
+.env
+.phpunit.result.cache
+composer.lock
+*.code-workspace.phpunit.cache

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="registrationguard">
+    <description>PSR-12 with the long-line allowance Silverstripe config arrays need.</description>
+    <file>src</file>
+    <file>tests</file>
+    <rule ref="PSR12">
+        <exclude name="Generic.Files.LineLength"/>
+    </rule>
+</ruleset>

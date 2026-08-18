@@ -1,0 +1,60 @@
+---
+Name: registrationguard
+---
+Moosylvania\RegistrationGuard\Service\RegistrationGuard:
+  # ---------------------------------------------------------------- timing
+  min_form_seconds: 5
+  max_form_seconds: 7200
+
+  # ---------------------------------------------------------------- scoring
+  block_threshold: 100
+  suspicious_dobs:
+    - '1970-01-01'
+    - '1900-01-01'
+    - '0000-00-00'
+  dot_alias_domains:
+    - 'gmail.com'
+    - 'googlemail.com'
+
+  # ---------------------------------------------------------------- rate limit
+  rate_limit_hits: 1
+  rate_limit_decay: 60
+
+  # ---------------------------------------------------------------- fields
+  # null target_class means no database lookups at all - the guard still runs
+  # timing, honeypot and the machine-generated-text heuristics.
+  target_class: null
+  field_map:
+    email: 'Email'
+    nickname: null
+    first_name: 'FirstName'
+    surname: 'Surname'
+    zip: null
+    dob: null
+  unique_fields: []
+  honeypot_field: 'RgWebsite'
+  timestamp_field: 'Rts'
+  canonical_field: 'EmailCanonical'
+
+  # ---------------------------------------------------------------- content blocks
+  reserved_nicknames: []
+  blocked_email_domains: []
+  blocked_email_suffixes:
+    - '.ru'
+  blocked_name_substrings:
+    - 'http://'
+    - 'https://'
+    - '.ru'
+  blocked_name_patterns:
+    - '/[А-Яа-яЁё]/u'
+    - '/\p{Han}/u'
+  min_age: 0
+  zip_regex: null
+
+  # ---------------------------------------------------------------- per-form overrides
+  sources: {}
+
+  # ---------------------------------------------------------------- auto-wiring
+  # Only consulted when the two extensions below are applied. See docs/en/registration-guard.md.
+  guarded_forms: {}
+

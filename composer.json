@@ -1,0 +1,49 @@
+{
+    "name": "moosylvania/silverstripe-registrationguard",
+    "description": "Configurable anti-spam guard for Silverstripe registration and entry forms, with a blocked-submission log and CMS admin.",
+    "type": "silverstripe-vendormodule",
+    "license": "MIT",
+    "keywords": ["silverstripe", "spam", "antispam", "registration", "honeypot", "form"],
+    "authors": [
+        {
+            "name": "Moosylvania",
+            "homepage": "https://moosylvania.com"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/Moosylvania/Silverstripe-RegistrationGuard/issues"
+    },
+    "require": {
+        "php": "^8.3",
+        "silverstripe/framework": "^6",
+        "silverstripe/admin": "^3",
+        "silverstripe/vendor-plugin": "^3"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.3",
+        "squizlabs/php_codesniffer": "^3.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "Moosylvania\\RegistrationGuard\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Moosylvania\\RegistrationGuard\\Tests\\": "tests/php/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "2.x-dev"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "composer/installers": true,
+            "silverstripe/vendor-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
