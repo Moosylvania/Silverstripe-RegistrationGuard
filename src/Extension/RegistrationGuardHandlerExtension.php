@@ -4,7 +4,7 @@ namespace Moosylvania\RegistrationGuard\Extension;
 
 use Moosylvania\RegistrationGuard\Service\RegistrationGuard;
 use SilverStripe\Core\Extension;
-use SilverStripe\Core\Validation\ValidationException;
+use SilverStripe\ORM\ValidationException;
 use SilverStripe\Forms\Form;
 
 /**

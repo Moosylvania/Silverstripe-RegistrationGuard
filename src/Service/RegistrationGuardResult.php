@@ -3,7 +3,7 @@
 namespace Moosylvania\RegistrationGuard\Service;
 
 use SilverStripe\Core\Injector\Injectable;
-use SilverStripe\Core\Validation\ValidationResult;
+use SilverStripe\ORM\ValidationResult;
 use SilverStripe\Forms\Form;
 
 /**
@@ -177,7 +177,7 @@ class RegistrationGuardResult
                     $field,
                     $error['message'],
                     ValidationResult::TYPE_ERROR,
-                    // Empty string, not null: Silverstripe 6 types $code as string.
+                    // Empty string rather than null, to match the Silverstripe 6 signature.
                     '',
                     $error['html'] ? ValidationResult::CAST_HTML : ValidationResult::CAST_TEXT
                 );

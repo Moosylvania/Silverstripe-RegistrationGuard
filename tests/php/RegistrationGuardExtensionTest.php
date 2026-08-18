@@ -9,10 +9,11 @@ use Moosylvania\RegistrationGuard\Service\RegistrationGuard;
 use Moosylvania\RegistrationGuard\Task\EmailCanonicalBackfillTask;
 use Moosylvania\RegistrationGuard\Task\SpamScoreTask;
 use Moosylvania\RegistrationGuard\Tests\Stub\GuardedTestForm;
+use Moosylvania\RegistrationGuard\Tests\Stub\TestController;
 use Moosylvania\RegistrationGuard\Tests\Stub\TestEntry;
 use SilverStripe\Control\Controller;
 use SilverStripe\Core\Config\Config;
-use SilverStripe\Core\Validation\ValidationException;
+use SilverStripe\ORM\ValidationException;
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\Form;
@@ -104,7 +105,7 @@ class RegistrationGuardExtensionTest extends SapphireTest
         ]);
 
         return GuardedTestForm::create(
-            Controller::curr(),
+            TestController::create(),
             'GuardedTestForm',
             FieldList::create(TextField::create('Email')),
             FieldList::create(FormAction::create('doTest'))
@@ -189,21 +190,20 @@ class RegistrationGuardExtensionTest extends SapphireTest
     |--------------------------------------------------------------------------
     */
 
-    public function testTasksAreRegisteredAndDeclareTheirOptions()
+    public function testTasksAreRegisteredAndDescribeThemselves()
     {
         foreach ([SpamScoreTask::class, EmailCanonicalBackfillTask::class] as $class) {
             $task = $class::create();
-            $names = array_map(fn ($option) => $option->getName(), $task->getOptions());
 
-            $this->assertStringStartsWith('tasks:', $class::getName());
             $this->assertNotEmpty($task->getTitle());
-            $this->assertContains('source', $names);
-            $this->assertContains('class', $names);
+            $this->assertNotEmpty(Config::inst()->get($class, 'segment'));
+            $this->assertStringContainsString('source', $task->getDescription());
+            $this->assertStringContainsString('class', $task->getDescription());
         }
 
-        $this->assertContains(
+        $this->assertStringContainsString(
             'delete',
-            array_map(fn ($option) => $option->getName(), SpamScoreTask::create()->getOptions()),
+            SpamScoreTask::create()->getDescription(),
             'Deleting must be an explicit opt-in flag'
         );
     }

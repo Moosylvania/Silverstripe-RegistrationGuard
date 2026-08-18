@@ -3,19 +3,16 @@
 namespace Moosylvania\RegistrationGuard\Task;
 
 use Moosylvania\RegistrationGuard\Service\RegistrationGuard;
+use SilverStripe\Control\Director;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\PolyExecution\PolyOutput;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 
 /**
  * Score existing records with exactly the heuristics that would have blocked them at signup, so junk
  * that predates the guard can be found.
  *
- * Reports only. Nothing is deleted unless --delete is passed, and even then only records that pass the
+ * Reports only. Nothing is deleted unless delete=1 is passed, and even then only records that pass the
  * content_relations safety gate.
  *
  * Note this applies the scored signals alone, not the hard content blocks - a stored record has no
@@ -23,11 +20,13 @@ use Symfony\Component\Console\Input\InputOption;
  */
 class SpamScoreTask extends BuildTask
 {
-    protected string $title = 'RegistrationGuard: score existing records for spam';
+    private static $segment = 'RegistrationGuard-Score';
 
-    protected static string $description = 'Scores existing records with the RegistrationGuard heuristics. Reports only unless --delete is passed.';
+    protected $title = 'RegistrationGuard: score existing records for spam';
 
-    protected static string $commandName = 'registrationguard-score';
+    protected $description = 'Scores existing records with the RegistrationGuard heuristics. '
+        . 'Reports only unless delete=1 is passed. '
+        . 'Params: source, class, from, to, min, limit, delete.';
 
     /**
      * Relations that mean "this record is really used, never delete it", keyed by class name.
@@ -37,49 +36,34 @@ class SpamScoreTask extends BuildTask
      *         - Posts
      *         - Orders
      */
-    private static array $content_relations = [];
+    private static $content_relations = [];
 
-    public function getOptions(): array
+    public function run($request)
     {
-        return [
-            new InputOption('source', null, InputOption::VALUE_REQUIRED, 'RegistrationGuard source name to resolve class, fields and thresholds from'),
-            new InputOption('class', null, InputOption::VALUE_REQUIRED, 'DataObject class to scan, overriding the source'),
-            new InputOption('from', null, InputOption::VALUE_REQUIRED, 'Only records created on or after this date', '-90 days'),
-            new InputOption('to', null, InputOption::VALUE_REQUIRED, 'Only records created on or before this date', 'now'),
-            new InputOption('min', null, InputOption::VALUE_REQUIRED, 'Minimum score to report; defaults to the source block_threshold'),
-            new InputOption('limit', null, InputOption::VALUE_REQUIRED, 'Maximum records to scan', 500),
-            new InputOption('delete', null, InputOption::VALUE_NONE, 'Actually delete matching records that hold no content'),
-        ];
-    }
-
-    protected function execute(InputInterface $input, PolyOutput $output): int
-    {
-        $source = $input->getOption('source');
-        $class = $input->getOption('class') ?: RegistrationGuard::option('target_class', $source);
+        $source = $request->getVar('source');
+        $class = $request->getVar('class') ?: RegistrationGuard::option('target_class', $source);
 
         if (!$class || !is_a($class, DataObject::class, true)) {
-            $output->writeln('<error>No DataObject class to scan. Pass --class, or --source naming a source with a target_class.</error>');
-            return Command::FAILURE;
+            $this->line('No DataObject class to scan. Pass class, or source naming a source with a target_class.');
+            return;
         }
 
-        $min = $input->getOption('min') !== null
-            ? (int) $input->getOption('min')
+        $min = $request->getVar('min') !== null
+            ? (int) $request->getVar('min')
             : (int) RegistrationGuard::option('block_threshold', $source);
-        $limit = (int) $input->getOption('limit');
-        $delete = (bool) $input->getOption('delete');
+        $limit = (int) ($request->getVar('limit') ?: 500);
+        $delete = (bool) $request->getVar('delete');
 
-        $from = date('Y-m-d H:i:s', strtotime($input->getOption('from')));
-        $to = date('Y-m-d H:i:s', strtotime($input->getOption('to')));
+        $from = date('Y-m-d H:i:s', strtotime($request->getVar('from') ?: '-90 days'));
+        $to = date('Y-m-d H:i:s', strtotime($request->getVar('to') ?: 'now'));
 
-        $output->writeln([
-            "Class:     {$class}",
-            'Source:    ' . ($source ?: '(defaults)'),
-            "Created:   {$from} .. {$to}",
-            "Min score: {$min}",
-            "Limit:     {$limit}",
-            'Mode:      ' . ($delete ? '<error>DELETE - records will be removed</error>' : 'report only'),
-            '',
-        ]);
+        $this->line("Class:     {$class}");
+        $this->line('Source:    ' . ($source ?: '(defaults)'));
+        $this->line("Created:   {$from} .. {$to}");
+        $this->line("Min score: {$min}");
+        $this->line("Limit:     {$limit}");
+        $this->line('Mode:      ' . ($delete ? 'DELETE - records will be removed' : 'report only'));
+        $this->line('');
 
         $guard = RegistrationGuard::create(null, $source);
         $records = DataList::create($class)
@@ -102,32 +86,34 @@ class SpamScoreTask extends BuildTask
                 $deletable[] = $record->ID;
             }
 
-            $output->writeln(sprintf(
+            $this->line(sprintf(
                 '#%-8d %-4d %-40s %s%s',
                 $record->ID,
                 $scored['score'],
                 (string) $record->getField('Email'),
                 implode(', ', $scored['reasons']),
-                $hasContent ? '  <comment>[has content, kept]</comment>' : ''
+                $hasContent ? '  [has content, kept]' : ''
             ));
         }
 
-        $output->writeln([
-            '',
-            "Scanned {$records->count()} records, {$matched} at or above {$min}, " . count($deletable) . ' with no content.',
-        ]);
+        $this->line('');
+        $this->line(
+            "Scanned {$records->count()} records, {$matched} at or above {$min}, "
+            . count($deletable) . ' with no content.'
+        );
 
         if (!$deletable) {
-            return Command::SUCCESS;
+            return;
         }
 
         if (!$delete) {
-            $output->writeln([
-                '',
-                'Nothing was deleted. Re-run with --delete to remove the ' . count($deletable) . ' record(s) listed above without content.',
-                'IDs: ' . implode(',', $deletable),
-            ]);
-            return Command::SUCCESS;
+            $this->line('');
+            $this->line(
+                'Nothing was deleted. Re-run with delete=1 to remove the ' . count($deletable)
+                . ' record(s) listed above without content.'
+            );
+            $this->line('IDs: ' . implode(',', $deletable));
+            return;
         }
 
         $deleted = 0;
@@ -135,19 +121,25 @@ class SpamScoreTask extends BuildTask
             $record->delete();
             $deleted++;
         }
-        $output->writeln(['', "<error>Deleted {$deleted} record(s).</error>"]);
-
-        return Command::SUCCESS;
+        $this->line('');
+        $this->line("Deleted {$deleted} record(s).");
     }
 
     /**
      * Read the scoring fields off a record using the source's field_map.
      */
-    protected function profileFor(DataObject $record, $source): array
+    protected function profileFor(DataObject $record, $source)
     {
         $profile = [];
+        $logicals = [
+            'email' => 'Email',
+            'nickname' => 'Nickname',
+            'first_name' => 'FirstName',
+            'surname' => 'Surname',
+            'dob' => 'Dob',
+        ];
 
-        foreach (['email' => 'Email', 'nickname' => 'Nickname', 'first_name' => 'FirstName', 'surname' => 'Surname', 'dob' => 'Dob'] as $logical => $key) {
+        foreach ($logicals as $logical => $key) {
             $column = RegistrationGuard::fieldName($logical, $source);
             // getField() rather than the accessor so a date comes back raw and unformatted.
             $profile[$key] = $column ? (string) $record->getField($column) : '';
@@ -159,7 +151,7 @@ class SpamScoreTask extends BuildTask
     /**
      * Whether the record has anything hanging off it worth keeping.
      */
-    protected function hasContent(DataObject $record): bool
+    protected function hasContent(DataObject $record)
     {
         foreach ((array) $this->config()->get('content_relations') as $class => $relations) {
             if (!$record instanceof $class) {
@@ -188,5 +180,10 @@ class SpamScoreTask extends BuildTask
         }
 
         return false;
+    }
+
+    protected function line($message)
+    {
+        echo $message . (Director::is_cli() ? PHP_EOL : '<br>' . PHP_EOL);
     }
 }
