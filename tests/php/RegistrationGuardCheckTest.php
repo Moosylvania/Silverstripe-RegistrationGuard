@@ -129,6 +129,15 @@ class RegistrationGuardCheckTest extends SapphireTest
         $this->assertStringContainsString('21', $result->getFieldErrors()['Dob']['message']);
     }
 
+    public function testInvalidZipIsAFieldErrorNotABlock()
+    {
+        $result = RegistrationGuard::create()->check($this->validData(['Zip' => 'NW1 4RY']), 'test');
+
+        $this->assertFalse($result->isBlocked(), 'A bad zip is a typo, not spam');
+        $this->assertTrue($result->shouldStop());
+        $this->assertArrayHasKey('Zip', $result->getFieldErrors());
+    }
+
     public function testHardContentBlocks()
     {
         $cases = [
@@ -136,7 +145,6 @@ class RegistrationGuardCheckTest extends SapphireTest
             'blocked-email-suffix:.ru' => ['Email' => 'someone@mail.ru'],
             'too-many-spaces:first_name' => ['FirstName' => 'a b c d'],
             'too-many-spaces:surname' => ['Surname' => 'a b c d'],
-            'invalid-zip' => ['Zip' => 'NW1 4RY'],
         ];
 
         foreach ($cases as $reason => $override) {

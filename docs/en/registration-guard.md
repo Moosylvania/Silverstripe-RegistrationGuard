@@ -156,7 +156,14 @@ the source has no `nickname` in its `field_map`.
 With `min_age` above zero, the date in the `dob` field must be at least that many years ago. `min_age`
 defaults to `0`, which disables the check.
 
-### 4. Dwell time — *block*
+### 4. Zip format — *field error*
+
+With `zip_regex` set, the value in the `zip` field must match it. Empty is not an error — make the
+field required on the form if it must be filled. `zip_regex` defaults to `null`, which disables the
+check. A postcode this pattern does not describe is a mismatch between your config and your audience,
+not spam, so it comes back as a field error the user can correct.
+
+### 5. Dwell time — *block*
 
 A hidden field carries the page-load time, HMAC-signed so a bot cannot simply post an older timestamp
 to walk past the check. Submissions faster than `min_form_seconds` are blocked; a token older than
@@ -167,7 +174,7 @@ The signing key comes from the `SS_REGISTRATION_SECRET` environment variable, fa
 `SS_DATABASE_PASSWORD`. Setting a dedicated secret is worth doing; the fallback only exists so the
 module works before anyone has read this paragraph.
 
-### 5. Honeypot — *block*
+### 6. Honeypot — *block*
 
 The module ships its own honeypot field rather than depending on a honeypot module, and it does not
 read `Captcha` — that name is used by real captcha plugins and would collide.
@@ -190,7 +197,7 @@ you can reintroduce, so be careful if you customise it:
 
 Set `honeypot_field: null` to disable.
 
-### 6. Hard content blocks — *block*
+### 7. Hard content blocks — *block*
 
 Unconditional, and all configurable:
 
@@ -202,7 +209,6 @@ Unconditional, and all configurable:
 | `blocked_name_patterns` | any name or the email matches the regex (default: Cyrillic, Han) |
 | `blocked_address_patterns` | the address matches the regex (default: none) |
 | `max_name_spaces` | a name has more spaces than allowed (default: 1 in `first_name`, 2 in `surname`) |
-| `zip_regex` | the zip does not match (default: `null`, disabled) |
 
 `blocked_name_patterns` takes plain regexes rather than script names, so you can add your own without
 the module owning a mapping table. Both defaults are aggressive — if you have real users writing their
@@ -251,7 +257,7 @@ max_name_spaces:
   nickname: 0      # no spaces at all in a handle
 ```
 
-### 7. Duplicate canonical email — *block*
+### 8. Duplicate canonical email — *block*
 
 The address is collapsed to the inbox it actually reaches — `j.o.e+promo@gmail.com` becomes
 `joe@gmail.com` — and checked against the `canonical_field` column on the target class.
@@ -260,11 +266,11 @@ The address is collapsed to the inbox it actually reaches — `j.o.e+promo@gmail
 target class.** The guard skips it silently when the column is absent, so an unconfigured install
 behaves as if the check does not exist rather than erroring.
 
-### 8. Scored signals — *block above the threshold*
+### 9. Scored signals — *block above the threshold*
 
 See [Scoring](#scoring). Blocks at or above `block_threshold`.
 
-### 9. Rate limit — *block*
+### 10. Rate limit — *block*
 
 Keyed on source, host and IP, allowing `rate_limit_hits` per `rate_limit_decay` seconds. Only evaluated
 for submissions that have passed everything else, so a genuine user's one good attempt is what consumes
@@ -332,6 +338,7 @@ en:
     STALE_ERROR: 'Your registration form expired, please reload the page and try again.'
     UNDER_AGE: 'Sorry you must be {age} years of age to register.'
     RESERVED_NICKNAME: 'Sorry this Nickname is not available.'
+    INVALID_ZIP: 'Please enter a valid zip code.'
 ```
 
 ## Config reference

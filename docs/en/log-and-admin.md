@@ -46,7 +46,6 @@ Access** in the security admin.
 | `blocked-pattern:/[А-Яа-яЁё]/u` | A name or the email matched a `blocked_name_patterns` regex |
 | `blocked-address-pattern:/^123 Main St$/i` | The address matched a `blocked_address_patterns` regex |
 | `too-many-spaces:surname` | That field had more spaces than `max_name_spaces` allows |
-| `invalid-zip` | The zip failed `zip_regex` |
 | `duplicate-canonical-email` | The inbox is already registered under a different-looking address |
 | `suspicious-dob:1970-01-01` | A date of birth from `suspicious_dobs` — worth 60 points |
 | `gibberish-surname:45` | The surname scored 45 on the machine-generated heuristic |
@@ -64,8 +63,8 @@ global default, so a change to the sweepstakes form cannot affect registration.
 
 **Reading the log for false positives.** Sort by `Score` ascending and look at what sits just above
 `block_threshold`. Records blocked at exactly 100 by two corroborating signals are where genuine people
-end up. A `gibberish-surname` on a real-looking name, or an `invalid-zip` from a country whose postcodes
-your `zip_regex` does not describe, means the config is wrong rather than the submitter.
+end up. A `gibberish-surname` on a real-looking name means the config is wrong rather than the
+submitter.
 
 **Reading it for false negatives** is harder, because what got through is not here. Compare the log
 against records created in the same window — that is what [`SpamScoreTask`](tasks.md) is for.

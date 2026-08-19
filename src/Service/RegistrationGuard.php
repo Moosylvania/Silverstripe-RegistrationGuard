@@ -448,6 +448,13 @@ class RegistrationGuard
             $result->addFieldError($dobField, $message, $this->genericError() . ' ' . $message);
         }
 
+        $zipRegex = $this->opt('zip_regex');
+        $zipField = $this->fieldName('zip', $this->source);
+        if ($zipRegex && $zipField && $zip !== '' && !preg_match($zipRegex, $zip)) {
+            $message = _t(self::class . '.INVALID_ZIP', 'Please enter a valid zip code.');
+            $result->addFieldError($zipField, $message, $this->genericError() . ' ' . $message);
+        }
+
         // ---------------------------------------------------------------- timing
 
         $timestampField = $this->opt('timestamp_field');
@@ -480,7 +487,6 @@ class RegistrationGuard
             'nickname' => $nickname,
             'first_name' => $firstName,
             'surname' => $surname,
-            'zip' => $zip,
             'address' => $address,
         ];
 
@@ -586,7 +592,6 @@ class RegistrationGuard
     protected function hardBlockReasons(array $values)
     {
         $email = $values['email'];
-        $zip = $values['zip'];
         $address = $values['address'];
 
         $reasons = [];
@@ -636,11 +641,6 @@ class RegistrationGuard
             if (substr_count($values[$logical], ' ') > (int) $max) {
                 $reasons[] = 'too-many-spaces:' . $logical;
             }
-        }
-
-        $zipRegex = $this->opt('zip_regex');
-        if ($zipRegex && $this->fieldName('zip', $this->source) && !preg_match($zipRegex, $zip)) {
-            $reasons[] = 'invalid-zip';
         }
 
         return $reasons;
