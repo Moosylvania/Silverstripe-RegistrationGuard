@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Moosylvania/Silverstripe-RegistrationGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/Moosylvania/Silverstripe-RegistrationGuard/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Packagist Version](https://img.shields.io/packagist/v/moosylvania/silverstripe-registrationguard)
 
 Anti-spam for Silverstripe forms that create records — registrations, sweepstakes entries, anything a
 bot would like to submit ten thousand times.
